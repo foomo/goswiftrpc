@@ -1,0 +1,11 @@
+module:
+  name: github.com/foomo/goswiftrpc/example
+  path: ./
+
+targets:
+  tree:
+    services:
+      /service: Service
+    package: github.com/foomo/goswiftrpc/example
+    tsrpc:
+      - Service

@@ -1,0 +1,20 @@
+# go
+__debug_bin*
+*.test
+*.out
+/goswiftrpc
+/bin/
+
+# swift
+.build/
+.swiftpm/
+DerivedData/
+
+# claude code session files (keep shareable settings like .claude/settings.json)
+.claude/plans/
+.claude/settings.local.json
+
+# os / editors
+.DS_Store
+.idea/
+.vscode/

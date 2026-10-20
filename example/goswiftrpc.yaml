@@ -1,0 +1,13 @@
+module: ..
+runtime: swift/GotsRPC.swift
+services:
+  github.com/foomo/goswiftrpc/example:
+    out: swift/ExampleServiceClients.swift
+    services:
+      /service: Service
+mappings:
+  github.com/foomo/goswiftrpc/example:
+    out: swift/ExampleVOs.swift
+  github.com/foomo/goswiftrpc/example/common:
+    out: swift/CommonVOs.swift
+    namespace: Common
