@@ -12,14 +12,24 @@ It uses [gocontemplate](https://github.com/foomo/gocontemplate) to load the Go p
 ## Usage
 
 ```shell
-go run github.com/foomo/goswiftrpc/cmd/goswiftrpc@latest path/to/goswiftrpc.yaml
+go install github.com/foomo/goswiftrpc/cmd/goswiftrpc@latest
+
+goswiftrpc generate path/to/goswiftrpc.yaml
 ```
 
 or, inside this repository:
 
 ```shell
-go run ./cmd/goswiftrpc example/goswiftrpc.yaml
+go run ./cmd/goswiftrpc generate example/goswiftrpc.yaml
 ```
+
+| Command                         | Description                                           |
+|---------------------------------|-------------------------------------------------------|
+| `generate <goswiftrpc.yaml>`    | generate the Swift runtime, clients and types         |
+| `help [command]`                | list the commands or show the help of one command     |
+| `version`                       | print the version, vcs revision and Go version        |
+
+`-h`/`--help` and `-v`/`--version` work as well. Generation writes nothing if the configuration is invalid or Swift names collide. The exit code is 1 for errors and 2 for invalid usage.
 
 ### Configuration
 
@@ -38,6 +48,10 @@ services:
     services:
       # endpoint: interface name (same as in gotsrpc.yaml)
       /service: Service
+  github.com/foomo/goswiftrpc/example/forest:
+    out: swift/ForestServiceClients.swift
+    services:
+      /forest-service: Service
 
 # go package => swift file for its types
 mappings:
@@ -47,9 +61,41 @@ mappings:
     out: swift/CommonVOs.swift
     # optional: nest the types in `public enum Common {}`
     namespace: Common
+  github.com/foomo/goswiftrpc/example/forest:
+    out: swift/ForestVOs.swift
+    # the clients of the package go into the namespace as well
+    namespace: Forest
 ```
 
 Every Go package that contains a type reachable from a service needs a mapping. A missing mapping is an error.
+
+### Namespaces
+
+Go has a namespace per package. Swift does not: all files compiled into one target (a Swift "module") share a single namespace. Two Go packages that both define `Leaf`, or two packages that both have a `Service`, therefore collide in Swift.
+
+A mapping `namespace` nests a package's types and service clients in a caseless enum, the usual Swift way to build a namespace:
+
+```swift
+public enum Forest {}
+extension Forest {
+    public struct Leaf { … }          // forest.Leaf
+    public struct ServiceClient { … } // client of forest.Service
+}
+```
+
+```swift
+let trees = Forest.ServiceClient(transport: transport) // forest.Service
+let leafs = ServiceClient(transport: transport)        // example.Service, no namespace
+let tree: Forest.Tree? = try await trees.getTree(treeType: .sassafras)
+```
+
+Namespaces are opt-in. Before writing any files, the generator checks every Swift name and fails with an explanation if:
+- two declarations get the same Swift name, for example two flat `Leaf` types or two flat `ServiceClient`s
+- a namespace is shared by several Go packages, or has the same name as a type
+- a type has a name the generated code needs, such as `Date`, `Data`, `String`, `Result`, `URLSessionTransport` or anything starting with `GotsRPC`
+- a type without namespace is referenced from inside a namespace that has a type of the same name, where Swift would pick the namespaced one
+
+The fix is almost always to give one of the packages a namespace. If you prefer shorter names in your app, add aliases such as `typealias ForestClient = Forest.ServiceClient`.
 
 ### Using the generated client
 
@@ -114,22 +160,26 @@ The generated clients only speak JSON. gotsrpc also supports msgpack, but Swift 
 
 ## Example
 
-`example/` contains a gotsrpc service. It is an in-memory tree of leaves that exercises the supported features. The directory has:
-- the gotsrpc Go proxy and client, generated with `gotsrpc example/gotsrpc.yaml`
+`example/` contains two gotsrpc services that exercise the supported features:
+- `example`: an in-memory tree of leaves, generated without a namespace
+- `example/forest`: a forest of trees whose leaves come in all kinds of shapes. It deliberately reuses the names `Leaf`, `Tree` and `Service`, and is generated into the `Forest` namespace
+
+The directory also has:
+- the gotsrpc Go proxies and clients, generated with `gotsrpc example/gotsrpc.yaml`
 - the generated Swift code in `example/swift/`
 - an end-to-end test
 
 The end-to-end test, `example/swift_e2e_test.go`:
 1. generates the Swift code
 2. compiles it together with `example/testdata/main.swift`
-3. starts the Go proxy with `httptest`
+3. starts both Go proxies with `httptest`
 4. calls every method from Swift and compares the output
 
 ## Development
 
 ```shell
-go test ./...                                   # unit and e2e tests (e2e skipped without swiftc)
-go run ./cmd/goswiftrpc example/goswiftrpc.yaml  # regenerate example/swift
+go test ./...                                            # unit and e2e tests (e2e skipped without swiftc)
+go run ./cmd/goswiftrpc generate example/goswiftrpc.yaml  # regenerate example/swift
 ```
 
 | Package                | Purpose                                                    |

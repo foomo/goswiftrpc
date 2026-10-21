@@ -64,14 +64,32 @@ var swiftKeywords = map[string]bool{
 
 // swiftGen renders swift code for go types
 type swiftGen struct {
+	model    *model.Model
 	mappings map[string]*config.Mapping
-	consts   map[string][]*types.Const
 	// classes lists structs that recursively contain themselves and are rendered as final classes
 	classes map[string]bool
+	// namespace is the swift namespace of the code currently rendered
+	namespace string
+	// flatRefs records references to types without namespace from within a namespace: namespace => swift name => go type
+	flatRefs map[string]map[string]string
 }
 
 func newSwiftGen(m *model.Model, mappings map[string]*config.Mapping) *swiftGen {
-	return &swiftGen{mappings: mappings, consts: m.Consts, classes: recursiveStructs(m.Types)}
+	return &swiftGen{
+		model:    m,
+		mappings: mappings,
+		classes:  recursiveStructs(m.Types),
+		flatRefs: map[string]map[string]string{},
+	}
+}
+
+// packageNamespace returns the swift namespace of a go package or an empty string
+func (g *swiftGen) packageNamespace(goPackage string) string {
+	if mapping := g.mappings[goPackage]; mapping != nil {
+		return mapping.Namespace
+	}
+
+	return ""
 }
 
 func ucfirst(s string) string {
@@ -208,8 +226,17 @@ func (g *swiftGen) qualifiedName(named *types.Named) string {
 	}
 
 	goPackage, name := typeName(named)
-	if mapping := g.mappings[goPackage]; mapping != nil && mapping.Namespace != "" {
-		return mapping.Namespace + "." + name
+	if namespace := g.packageNamespace(goPackage); namespace != "" {
+		return namespace + "." + name
+	}
+
+	// unqualified names are looked up in the current namespace first, record them to detect shadowing
+	if g.namespace != "" {
+		if g.flatRefs[g.namespace] == nil {
+			g.flatRefs[g.namespace] = map[string]string{}
+		}
+
+		g.flatRefs[g.namespace][name] = model.FullName(named)
 	}
 
 	return name
@@ -503,7 +530,7 @@ func (g *swiftGen) renderStructBody(name string, str *types.Struct, asClass bool
 func (g *swiftGen) enumConstants(named *types.Named) (names, literals []string, err error) {
 	name := named.Obj().Name()
 
-	for _, c := range g.consts[model.FullName(named)] {
+	for _, c := range g.model.Consts[model.FullName(named)] {
 		literal, litErr := swiftConstLiteral(c.Val())
 		if litErr != nil {
 			return nil, nil, litErr
@@ -641,16 +668,20 @@ func recursiveStructs(named map[string]*types.Named) map[string]bool {
 // RenderTypes renders all named types of the model into the swift files of their package mappings,
 // returns file contents by output path
 func RenderTypes(m *model.Model, mappings map[string]*config.Mapping) (map[string]string, error) {
-	g := newSwiftGen(m, mappings)
+	return newSwiftGen(m, mappings).renderTypes()
+}
 
+func (g *swiftGen) renderTypes() (map[string]string, error) {
+	mappings := g.mappings
 	mappedSwift := map[string]map[string]*Code{}
 
-	for fullName, named := range m.Types {
+	for fullName, named := range g.model.Types {
 		goPackage, name := typeName(named)
 		if mappings[goPackage] == nil {
 			return nil, errors.New("missing mapping for go package " + goPackage + " (used by " + fullName + ") => add it to the mappings in your goswiftrpc.yaml")
 		}
 
+		g.namespace = mappings[goPackage].Namespace
 		sw := NewCode("    ")
 		if err := g.renderNamed(named, sw); err != nil {
 			return nil, err
@@ -662,6 +693,8 @@ func RenderTypes(m *model.Model, mappings map[string]*config.Mapping) (map[strin
 
 		mappedSwift[goPackage][name] = sw
 	}
+
+	g.namespace = ""
 
 	files := map[string]string{}
 

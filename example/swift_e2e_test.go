@@ -1,6 +1,7 @@
 package example_test
 
 import (
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"os/exec"
@@ -9,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/foomo/goswiftrpc/example"
+	"github.com/foomo/goswiftrpc/example/forest"
 	"github.com/foomo/goswiftrpc/internal/codegen"
 	"github.com/foomo/goswiftrpc/internal/config"
 	"github.com/foomo/goswiftrpc/internal/model"
@@ -35,9 +37,15 @@ deleteLeaf docs: error=leaf has children: docs
 deleteLeaf created: error=nil
 deleteLeaf missing: error=leaf not found: missing
 count total=3 byType=file:1,folder:2
+forest oak: Quercus robur, the old oak by the creek leafs=8 weight=17.45 shapes=lobed,lobed,lobed,lobed,lobed,lobed,lobed,lobed
+forest holly: Ilex aquifolium, the holly guarding the path leafs=6 weight=7.17 shapes=spiny,spiny,spiny,oval,spiny,spiny
+forest sassafras: Sassafras albidum, the indecisive sassafras leafs=6 weight=9.57 shapes=oval,mitten,lobed,oval,mitten,lobed
+forest pine: Pinus sylvestris, the lonely pine on the ridge leafs=12 weight=0.24 shapes=needle,needle,needle,needle,needle,needle,needle,needle,needle,needle,needle,needle
+forest baobab: nil
+namespaces: Leaf Forest.Leaf
 `
 
-// TestSwiftE2E generates the swift client, compiles it with a harness and calls the go proxy
+// TestSwiftE2E generates the swift clients, compiles them with a harness and calls the go proxies of both services
 func TestSwiftE2E(t *testing.T) {
 	swiftc, err := exec.LookPath("swiftc")
 	if err != nil {
@@ -75,7 +83,14 @@ func TestSwiftE2E(t *testing.T) {
 	output, err := exec.CommandContext(t.Context(), swiftc, args...).CombinedOutput()
 	require.NoError(t, err, string(output))
 
-	server := httptest.NewServer(example.NewDefaultServiceGoTSRPCProxy(example.NewService()))
+	treeProxy := example.NewDefaultServiceGoTSRPCProxy(example.NewService())
+	forestProxy := forest.NewDefaultServiceGoTSRPCProxy(forest.NewService())
+
+	mux := http.NewServeMux()
+	mux.Handle(treeProxy.EndPoint+"/", treeProxy)
+	mux.Handle(forestProxy.EndPoint+"/", forestProxy)
+
+	server := httptest.NewServer(mux)
 	defer server.Close()
 
 	output, err = exec.CommandContext(t.Context(), binary, server.URL).CombinedOutput()

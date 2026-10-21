@@ -9,7 +9,9 @@ import (
 
 // Generate renders the runtime, the service clients and all mapped types, returns file contents by output path
 func Generate(cfg *config.Config, m *model.Model) (map[string]string, error) {
-	files, err := RenderTypes(m, cfg.Mappings)
+	g := newSwiftGen(m, cfg.Mappings)
+
+	files, err := g.renderTypes()
 	if err != nil {
 		return nil, err
 	}
@@ -29,9 +31,14 @@ func Generate(cfg *config.Config, m *model.Model) (map[string]string, error) {
 	}
 
 	for _, goPackage := range cfg.ServicePackages() {
-		if err := add(cfg.Services[goPackage].Out, RenderSwiftServices(m, m.Services[goPackage], cfg.Mappings)); err != nil {
+		if err := add(cfg.Services[goPackage].Out, g.renderServices(goPackage)); err != nil {
 			return nil, err
 		}
+	}
+
+	// references are recorded while rendering, so names are checked last
+	if err := g.checkNames(); err != nil {
+		return nil, err
 	}
 
 	return files, nil

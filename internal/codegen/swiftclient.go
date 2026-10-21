@@ -67,7 +67,7 @@ func (g *swiftGen) renderSwiftClientMethod(method *model.Method, sw *Code) {
 	argsValue := "GotsRPCNoArgs()"
 
 	if len(args) > 0 {
-		sw.L("struct Args: Encodable {").Ind(1)
+		sw.L("struct _Args: Encodable {").Ind(1)
 
 		values := make([]string, 0, len(args))
 
@@ -88,15 +88,15 @@ func (g *swiftGen) renderSwiftClientMethod(method *model.Method, sw *Code) {
 		sw.Ind(-1).L("}")
 		sw.L("")
 
-		argsValue = "Args(" + strings.Join(values, ", ") + ")"
+		argsValue = "_Args(" + strings.Join(values, ", ") + ")"
 	}
 
 	resultType := "GotsRPCVoid"
 
 	if len(rets) > 0 {
-		resultType = "Result"
+		resultType = "_Result"
 
-		sw.L("struct Result: Decodable {").Ind(1)
+		sw.L("struct _Result: Decodable {").Ind(1)
 
 		for i, ret := range rets {
 			sw.L("let r" + strconv.Itoa(i) + ": " + ret.typ)
@@ -159,17 +159,53 @@ func (g *swiftGen) renderSwiftClient(service *model.Service, sw *Code) {
 	sw.Ind(-1).L("}")
 }
 
-// RenderSwiftServices renders the swift clients of services
-func RenderSwiftServices(m *model.Model, services []*model.Service, mappings map[string]*config.Mapping) string {
-	g := newSwiftGen(m, mappings)
+// RenderSwiftServices renders the swift clients of the services of a go package
+func RenderSwiftServices(m *model.Model, goPackage string, mappings map[string]*config.Mapping) string {
+	return newSwiftGen(m, mappings).renderServices(goPackage)
+}
+
+// renderServices renders the clients of a go package into the namespace of its mapping
+func (g *swiftGen) renderServices(goPackage string) string {
+	g.namespace = g.packageNamespace(goPackage)
+	defer func() { g.namespace = "" }()
 
 	sw := NewCode("    ")
 	sw.L("import Foundation")
 
-	for _, service := range services {
+	if g.namespace != "" {
 		sw.L("")
+
+		// the namespace is declared by the types file, unless the package has no types
+		if !g.hasTypes(goPackage) {
+			sw.L("// " + goPackage)
+			sw.L("public enum " + g.namespace + " {}")
+			sw.L("")
+		}
+
+		sw.L("extension " + g.namespace + " {").Ind(1)
+	}
+
+	for i, service := range g.model.Services[goPackage] {
+		if i > 0 || g.namespace == "" {
+			sw.L("")
+		}
+
 		g.renderSwiftClient(service, sw)
 	}
 
+	if g.namespace != "" {
+		sw.Ind(-1).L("}")
+	}
+
 	return GetSwiftHeaderComment() + swiftCodeString(sw)
+}
+
+func (g *swiftGen) hasTypes(goPackage string) bool {
+	for _, named := range g.model.Types {
+		if p, _ := typeName(named); p == goPackage {
+			return true
+		}
+	}
+
+	return false
 }

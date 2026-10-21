@@ -9,3 +9,9 @@ targets:
     package: github.com/foomo/goswiftrpc/example
     tsrpc:
       - Service
+  forest:
+    services:
+      /forest-service: Service
+    package: github.com/foomo/goswiftrpc/example/forest
+    tsrpc:
+      - Service

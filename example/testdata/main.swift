@@ -93,3 +93,20 @@ print("deleteLeaf created: \(describe(try await client.deleteLeaf(id: created.re
 print("deleteLeaf missing: \(describe(try await client.deleteLeaf(id: LeafID(rawValue: "missing"))))")
 
 print(describe(try await client.count()))
+
+// forest: same go type names as above, living in the Forest namespace
+let forest = Forest.ServiceClient(transport: transport)
+for treeType in [Forest.TreeType.oak, .holly, .sassafras, .pine] {
+    guard let tree: Forest.Tree = try await forest.getTree(treeType: treeType) else {
+        print("forest \(treeType.rawValue): nil")
+        continue
+    }
+    let leafs: [Forest.Leaf] = tree.leafs ?? []
+    let weight = leafs.reduce(0) { $0 + $1.weight }
+    print("forest \(tree.treeType.rawValue): \(tree.name) leafs=\(leafs.count) weight=\(String(format: "%.2f", weight)) shapes=\(leafs.map { $0.shape.rawValue }.joined(separator: ","))")
+}
+print("forest baobab: \(try await forest.getTree(treeType: Forest.TreeType(rawValue: "baobab")).map { $0.name } ?? "nil")")
+
+let exampleLeaf: Leaf? = try await client.getLeaf(id: .rootLeafID)
+let forestLeaf = Forest.Leaf(weight: 1, shape: .star)
+print("namespaces: \(type(of: exampleLeaf!)) \(String(reflecting: type(of: forestLeaf)).split(separator: ".").suffix(2).joined(separator: "."))")

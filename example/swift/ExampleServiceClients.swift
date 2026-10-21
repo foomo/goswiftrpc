@@ -14,7 +14,7 @@ public struct ServiceClient: Sendable {
     }
 
     public func count() async throws -> (total: Int, byType: [LeafType: Int]?) {
-        struct Result: Decodable {
+        struct _Result: Decodable {
             let r0: Int
             let r1: [LeafType: Int]?
 
@@ -25,12 +25,12 @@ public struct ServiceClient: Sendable {
             }
         }
 
-        let result = try await transport.call(endpoint: endpoint, method: "Count", args: GotsRPCNoArgs(), result: Result.self)
+        let result = try await transport.call(endpoint: endpoint, method: "Count", args: GotsRPCNoArgs(), result: _Result.self)
         return (result.r0, result.r1)
     }
 
     public func createLeaf(leaf: Leaf) async throws -> (ret: Leaf?, ret1: LeafError?) {
-        struct Args: Encodable {
+        struct _Args: Encodable {
             let a0: Leaf
 
             func encode(to encoder: Encoder) throws {
@@ -39,7 +39,7 @@ public struct ServiceClient: Sendable {
             }
         }
 
-        struct Result: Decodable {
+        struct _Result: Decodable {
             let r0: Leaf?
             let r1: LeafError?
 
@@ -50,12 +50,12 @@ public struct ServiceClient: Sendable {
             }
         }
 
-        let result = try await transport.call(endpoint: endpoint, method: "CreateLeaf", args: Args(a0: leaf), result: Result.self)
+        let result = try await transport.call(endpoint: endpoint, method: "CreateLeaf", args: _Args(a0: leaf), result: _Result.self)
         return (result.r0, result.r1)
     }
 
     public func deleteLeaf(id: LeafID) async throws -> GotsRPCError? {
-        struct Args: Encodable {
+        struct _Args: Encodable {
             let a0: LeafID
 
             func encode(to encoder: Encoder) throws {
@@ -64,7 +64,7 @@ public struct ServiceClient: Sendable {
             }
         }
 
-        struct Result: Decodable {
+        struct _Result: Decodable {
             let r0: GotsRPCError?
 
             init(from decoder: Decoder) throws {
@@ -73,11 +73,11 @@ public struct ServiceClient: Sendable {
             }
         }
 
-        return try await transport.call(endpoint: endpoint, method: "DeleteLeaf", args: Args(a0: id), result: Result.self).r0
+        return try await transport.call(endpoint: endpoint, method: "DeleteLeaf", args: _Args(a0: id), result: _Result.self).r0
     }
 
     public func getLeaf(id: LeafID) async throws -> Leaf? {
-        struct Args: Encodable {
+        struct _Args: Encodable {
             let a0: LeafID
 
             func encode(to encoder: Encoder) throws {
@@ -86,7 +86,7 @@ public struct ServiceClient: Sendable {
             }
         }
 
-        struct Result: Decodable {
+        struct _Result: Decodable {
             let r0: Leaf?
 
             init(from decoder: Decoder) throws {
@@ -95,11 +95,11 @@ public struct ServiceClient: Sendable {
             }
         }
 
-        return try await transport.call(endpoint: endpoint, method: "GetLeaf", args: Args(a0: id), result: Result.self).r0
+        return try await transport.call(endpoint: endpoint, method: "GetLeaf", args: _Args(a0: id), result: _Result.self).r0
     }
 
     public func getTree(rootID: LeafID) async throws -> (ret: Tree?, ret1: GotsRPCError?) {
-        struct Args: Encodable {
+        struct _Args: Encodable {
             let a0: LeafID
 
             func encode(to encoder: Encoder) throws {
@@ -108,7 +108,7 @@ public struct ServiceClient: Sendable {
             }
         }
 
-        struct Result: Decodable {
+        struct _Result: Decodable {
             let r0: Tree?
             let r1: GotsRPCError?
 
@@ -119,12 +119,12 @@ public struct ServiceClient: Sendable {
             }
         }
 
-        let result = try await transport.call(endpoint: endpoint, method: "GetTree", args: Args(a0: rootID), result: Result.self)
+        let result = try await transport.call(endpoint: endpoint, method: "GetTree", args: _Args(a0: rootID), result: _Result.self)
         return (result.r0, result.r1)
     }
 
     public func listLeaves(parentID: LeafID, types: [LeafType]?) async throws -> [Leaf?]? {
-        struct Args: Encodable {
+        struct _Args: Encodable {
             let a0: LeafID
             let a1: [LeafType]?
 
@@ -135,7 +135,7 @@ public struct ServiceClient: Sendable {
             }
         }
 
-        struct Result: Decodable {
+        struct _Result: Decodable {
             let r0: [Leaf?]?
 
             init(from decoder: Decoder) throws {
@@ -144,7 +144,7 @@ public struct ServiceClient: Sendable {
             }
         }
 
-        return try await transport.call(endpoint: endpoint, method: "ListLeaves", args: Args(a0: parentID, a1: types), result: Result.self).r0
+        return try await transport.call(endpoint: endpoint, method: "ListLeaves", args: _Args(a0: parentID, a1: types), result: _Result.self).r0
     }
 
     public func ping() async throws {

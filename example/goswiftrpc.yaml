@@ -5,9 +5,16 @@ services:
     out: swift/ExampleServiceClients.swift
     services:
       /service: Service
+  github.com/foomo/goswiftrpc/example/forest:
+    out: swift/ForestServiceClients.swift
+    services:
+      /forest-service: Service
 mappings:
   github.com/foomo/goswiftrpc/example:
     out: swift/ExampleVOs.swift
   github.com/foomo/goswiftrpc/example/common:
     out: swift/CommonVOs.swift
     namespace: Common
+  github.com/foomo/goswiftrpc/example/forest:
+    out: swift/ForestVOs.swift
+    namespace: Forest

@@ -244,7 +244,7 @@ func TestSwiftTypecheck(t *testing.T) {
 func TestRenderSwiftServices(t *testing.T) {
 	m := loadTestModel(t)
 
-	code := RenderSwiftServices(m, m.Services[testPkg], testMappings())
+	code := RenderSwiftServices(m, testPkg, testMappings())
 	for _, expected := range []string{
 		"public struct ServiceClient: Sendable {",
 		`public static let defaultEndpoint = "/service"`,
