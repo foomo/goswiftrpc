@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/foomo/gocontemplate/pkg/contemplate"
@@ -56,4 +57,21 @@ func TestGoContemplate(t *testing.T) {
 	require.NotNil(t, pkg)
 
 	fmt.Println(ctpl, err)
+}
+
+// TestWireFormat checks the json the swift client has to decode, without opening a port
+func TestWireFormat(t *testing.T) {
+	proxy := example.NewDefaultServiceGoTSRPCProxy(example.NewService())
+
+	r := httptest.NewRequest(http.MethodPost, "/service/GetLeaf", strings.NewReader(`["readme"]`))
+	r.Header.Set("Content-Type", "application/json; charset=utf-8")
+
+	w := httptest.NewRecorder()
+	proxy.ServeHTTP(w, r)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	body := w.Body.String()
+	assert.Contains(t, body, `"createdBy":{"id":"65f0a1b2c3d4e5f601234567","name":"admin","role":2}`, "text marshaled ids are hex strings")
+	assert.Contains(t, body, `"createdAt":1700000000000`, "times are unix millis")
+	assert.Contains(t, body, `"content":"aGVsbG8gc3dpZnQ="`, "bytes are base64")
 }

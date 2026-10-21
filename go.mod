@@ -1,6 +1,6 @@
 module github.com/foomo/goswiftrpc
 
-go 1.27.3
+go 1.27.0
 
 require (
 	github.com/foomo/go v0.17.1

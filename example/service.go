@@ -30,7 +30,7 @@ type service struct {
 // NewService returns an in memory service seeded with root/docs/readme
 func NewService() Service {
 	s := &service{entries: map[LeafID]*entry{}}
-	admin := common.User{Name: "admin", Role: common.RoleOwner}
+	admin := common.User{ID: common.MustUserID("65f0a1b2c3d4e5f601234567"), Name: "admin", Role: common.RoleOwner}
 
 	s.add("", Leaf{ID: RootLeafID, Type: LeafTypeFolder, Name: "root", CreatedAt: time.UnixMilli(0).UTC(), Audit: common.Audit{CreatedBy: admin}})
 	s.add(RootLeafID, Leaf{ID: "docs", Type: LeafTypeFolder, Name: "docs", CreatedAt: Now, Audit: common.Audit{CreatedBy: admin}})
@@ -42,7 +42,7 @@ func NewService() Service {
 		Tags:      []string{"doc", "md"},
 		Meta:      map[string]string{"lang": "en"},
 		Content:   []byte("hello swift"),
-		Owner:     &common.User{Name: "jan", Role: common.RoleEditor},
+		Owner:     &common.User{ID: common.MustUserID("65f0a1b2c3d4e5f6deadbeef"), Name: "jan", Role: common.RoleEditor},
 		Audit:     common.Audit{CreatedBy: admin, UpdatedAt: &Now},
 	})
 

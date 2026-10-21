@@ -36,17 +36,24 @@ extension Common {
 
     // github.com/foomo/goswiftrpc/example/common.User
     public struct User: Codable, Sendable, Equatable {
+        public var id: Common.UserID
         public var name: String
         public var role: Common.Role
 
-        public init(name: String, role: Common.Role) {
+        public init(id: Common.UserID, name: String, role: Common.Role) {
+            self.id = id
             self.name = name
             self.role = role
         }
 
         enum CodingKeys: String, CodingKey {
+            case id
             case name
             case role
         }
     }
+
+    // github.com/foomo/goswiftrpc/example/common.UserID
+    // encoded by MarshalText
+    public typealias UserID = String
 }

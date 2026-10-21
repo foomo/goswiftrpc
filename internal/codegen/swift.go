@@ -253,7 +253,7 @@ func (g *swiftGen) isNilable(t types.Type) bool {
 			return swiftNilableOverrides[fullName]
 		}
 
-		if _, isInterface := t.Underlying().(*types.Interface); isInterface {
+		if _, isInterface := t.Underlying().(*types.Interface); isInterface || model.MarshalingOf(t) != model.MarshalDefault {
 			return false
 		}
 
@@ -377,9 +377,17 @@ func embeddedStruct(t types.Type) (*types.Struct, bool) {
 		return nil, false
 	}
 
-	str, _ := named.Underlying().(*types.Struct)
+	return plainStruct(named), isPtr
+}
 
-	return str, isPtr
+// plainStruct returns the underlying struct of a named type that is encoded field by field, or nil
+func plainStruct(named *types.Named) *types.Struct {
+	str, ok := named.Underlying().(*types.Struct)
+	if !ok || model.MarshalingOf(named) != model.MarshalDefault {
+		return nil
+	}
+
+	return str
 }
 
 // collectFields flattens a struct including its inline embedded structs, embedded fields come first
@@ -594,6 +602,20 @@ func (g *swiftGen) renderNamed(named *types.Named, sw *Code) error {
 
 	name := named.Obj().Name()
 
+	switch model.MarshalingOf(named) {
+	case model.MarshalText:
+		sw.L("// encoded by MarshalText")
+		sw.L("public typealias " + name + " = String")
+
+		return nil
+	case model.MarshalJSON:
+		sw.L("// encoded by MarshalJSON")
+		sw.L("public typealias " + name + " = GotsRPCJSONValue")
+
+		return nil
+	case model.MarshalDefault:
+	}
+
 	switch u := named.Underlying().(type) {
 	case *types.Struct:
 		g.renderStructBody(name, u, g.classes[model.FullName(named)], sw)
@@ -618,10 +640,8 @@ func recursiveStructs(named map[string]*types.Named) map[string]bool {
 		case *types.Pointer:
 			direct(t.Elem(), acc)
 		case *types.Named:
-			if _, ok := named[model.FullName(t)]; ok {
-				if _, isStruct := t.Underlying().(*types.Struct); isStruct {
-					acc[model.FullName(t)] = true
-				}
+			if _, ok := named[model.FullName(t)]; ok && plainStruct(t) != nil {
+				acc[model.FullName(t)] = true
 			}
 		case *types.Struct:
 			for i := range t.NumFields() {
@@ -633,7 +653,7 @@ func recursiveStructs(named map[string]*types.Named) map[string]bool {
 	edges := map[string]map[string]bool{}
 
 	for fullName, n := range named {
-		if str, ok := n.Underlying().(*types.Struct); ok {
+		if str := plainStruct(n); str != nil {
 			edges[fullName] = map[string]bool{}
 			direct(str, edges[fullName])
 		}

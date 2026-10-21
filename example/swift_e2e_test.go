@@ -19,7 +19,7 @@ import (
 )
 
 const expectedSwiftOutput = `ping
-getLeaf readme: id=readme type=file name=README.md createdAt=1700000000000 createdBy=admin:2 parent=docs updatedAt=1700000000000 tags=doc,md meta=lang:en content=hello swift owner=jan:editor
+getLeaf readme: id=readme type=file name=README.md createdAt=1700000000000 createdBy=admin:2:65f0a1b2c3d4e5f601234567 parent=docs updatedAt=1700000000000 tags=doc,md meta=lang:en content=hello swift owner=jan:editor:65f0a1b2c3d4e5f6deadbeef
 getLeaf readme grandparent: true
 getLeaf missing: nil
 getTree root: root error=nil
@@ -30,7 +30,7 @@ listLeaves docs: 1
 listLeaves root folders: 1
 listLeaves root files: nil
 count total=3 byType=file:1,folder:2
-createLeaf: id=leaf-1 type=file name=notes.txt createdAt=1700000000000 createdBy=swift:1 parent=docs tags=swift meta=client:swift content=from swift leafError=nil
+createLeaf: id=leaf-1 type=file name=notes.txt createdAt=1700000000000 createdBy=swift:1:5f0a1b2c3d4e5f6012345678 parent=docs tags=swift meta=client:swift content=from swift leafError=nil
 createLeaf invalid: true leafError=400:name must not be empty
 count total=4 byType=file:2,folder:2
 deleteLeaf docs: error=leaf has children: docs

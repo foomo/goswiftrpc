@@ -17,7 +17,7 @@ func describe(_ leaf: Leaf?) -> String {
         "type=\(leaf.type.rawValue)",
         "name=\(leaf.name)",
         "createdAt=\(millis(leaf.createdAt))",
-        "createdBy=\(leaf.createdBy.name):\(leaf.createdBy.role.rawValue)",
+        "createdBy=\(leaf.createdBy.name):\(leaf.createdBy.role.rawValue):\(leaf.createdBy.id)",
         "parent=\(leaf.parentLeaf?.id.rawValue ?? "nil")",
     ]
     if let updatedAt = leaf.updatedAt {
@@ -33,7 +33,7 @@ func describe(_ leaf: Leaf?) -> String {
         parts.append("content=\(String(decoding: content, as: UTF8.self))")
     }
     if let owner = leaf.owner {
-        parts.append("owner=\(owner.name):\(owner.role == .editor ? "editor" : "other")")
+        parts.append("owner=\(owner.name):\(owner.role == .editor ? "editor" : "other"):\(owner.id)")
     }
     return parts.joined(separator: " ")
 }
@@ -69,9 +69,9 @@ print("listLeaves root files: \(try await client.listLeaves(parentID: .rootLeafI
 
 print(describe(try await client.count()))
 
-let docs = Leaf(createdBy: Common.User(name: "", role: .viewer), id: LeafID(rawValue: "docs"), type: .folder, createdAt: Date(), name: "docs")
+let docs = Leaf(createdBy: Common.User(id: "000000000000000000000000", name: "", role: .viewer), id: LeafID(rawValue: "docs"), type: .folder, createdAt: Date(), name: "docs")
 let created = try await client.createLeaf(leaf: Leaf(
-    createdBy: Common.User(name: "swift", role: .editor),
+    createdBy: Common.User(id: "5f0a1b2c3d4e5f6012345678", name: "swift", role: .editor),
     id: LeafID(rawValue: ""),
     type: .file,
     createdAt: Date(timeIntervalSince1970: 0),
@@ -83,7 +83,7 @@ let created = try await client.createLeaf(leaf: Leaf(
 ))
 print("createLeaf: \(describe(created.ret)) leafError=\(created.ret1.map { "\($0.code):\($0.message)" } ?? "nil")")
 
-let invalid = try await client.createLeaf(leaf: Leaf(createdBy: Common.User(name: "swift", role: .viewer), id: LeafID(rawValue: ""), type: .file, createdAt: Date(), name: ""))
+let invalid = try await client.createLeaf(leaf: Leaf(createdBy: Common.User(id: "5f0a1b2c3d4e5f6012345678", name: "swift", role: .viewer), id: LeafID(rawValue: ""), type: .file, createdAt: Date(), name: ""))
 print("createLeaf invalid: \(invalid.ret == nil) leafError=\(invalid.ret1.map { "\($0.code):\($0.message)" } ?? "nil")")
 
 print(describe(try await client.count()))

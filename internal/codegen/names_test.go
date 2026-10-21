@@ -163,14 +163,36 @@ func TestNamesReserved(t *testing.T) {
 type Date struct{ Day int }
 type GotsRPCThing string
 type Result struct{ OK bool }
+type Error struct{ Msg string }
 
-type Service interface{ Get(d Date, t GotsRPCThing) Result }
+type Service interface{ Get(d Date, t GotsRPCThing, e Error) Result }
 `})
 
+	// within a namespace only names used by generated types and clients are reserved
 	_, err := generateForTest(m, map[string]*config.Mapping{pkgA: {Out: "A.swift", Namespace: "A"}})
 	require.Error(t, err)
+	assert.Contains(t, err.Error(), "swift name A.Date is reserved by swift or the goswiftrpc runtime")
+	assert.Contains(t, err.Error(), "swift name A.GotsRPCThing is reserved by swift or the goswiftrpc runtime")
+	assert.NotContains(t, err.Error(), "A.Result")
+	assert.NotContains(t, err.Error(), "A.Error")
 
-	for _, name := range []string{"A.Date", "A.GotsRPCThing", "A.Result"} {
-		assert.Contains(t, err.Error(), "swift name "+name+" is reserved by swift or the goswiftrpc runtime")
-	}
+	// at the top level names used by the runtime are reserved too
+	_, err = generateForTest(m, map[string]*config.Mapping{pkgA: {Out: "A.swift"}})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "swift name Error is reserved by swift or the goswiftrpc runtime")
+	assert.NotContains(t, err.Error(), "swift name Result")
+}
+
+func TestNamesNamespacedResult(t *testing.T) {
+	m := loadPackagesModel(t, [2]string{pkgA, `package a
+
+type Result struct{ Hits int }
+
+type Service interface{ Search(q string) (Result, error) }
+`})
+
+	files, err := generateForTest(m, map[string]*config.Mapping{pkgA: {Out: "A.swift", Namespace: "Search"}})
+	require.NoError(t, err)
+	assert.Contains(t, files["A.swift"], "public struct Result: Codable, Sendable, Equatable {")
+	assert.Contains(t, files[pkgA+"/Clients.swift"], "public func search(q: String) async throws -> (ret: Search.Result, ret1: GotsRPCError?) {")
 }

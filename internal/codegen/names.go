@@ -7,26 +7,28 @@ import (
 	"strings"
 )
 
-// swiftReservedNames are swift, foundation and runtime names the generated code uses unqualified,
-// a generated type of the same name would shadow them
-var swiftReservedNames = map[string]bool{
-	// swift standard library
+// swiftTypeCodeNames are the swift and foundation names that generated types and clients use unqualified.
+// Declarations of these names would shadow them, at the top level as well as within a namespace.
+var swiftTypeCodeNames = map[string]bool{
 	"String": true, "Bool": true, "Int": true, "Int8": true, "Int16": true, "Int32": true, "Int64": true,
 	"UInt": true, "UInt8": true, "UInt16": true, "UInt32": true, "UInt64": true, "Float": true, "Double": true,
-	"Error": true, "Result": true, "Codable": true, "Encodable": true, "Decodable": true, "Encoder": true, "Decoder": true,
-	"CodingKey": true, "CodingKeys": true, "CodingKeyRepresentable": true, "DecodingError": true, "RawRepresentable": true,
-	"Sendable": true, "Equatable": true, "Hashable": true, "CustomStringConvertible": true, "Swift": true,
-	// foundation
-	"Foundation": true, "FoundationNetworking": true, "Data": true, "Date": true, "URL": true, "URLError": true,
-	"URLRequest": true, "URLResponse": true, "HTTPURLResponse": true, "URLSession": true, "JSONEncoder": true,
-	"JSONDecoder": true, "UTF8": true,
-	// goswiftrpc runtime
-	"URLSessionTransport": true,
+	"Data": true, "Date": true, "Codable": true, "Encodable": true, "Decodable": true, "Encoder": true, "Decoder": true,
+	"CodingKey": true, "CodingKeys": true, "CodingKeyRepresentable": true, "RawRepresentable": true,
+	"Sendable": true, "Equatable": true, "Hashable": true,
 }
 
-// isReservedName tells if name is used by swift or the runtime, all GotsRPC prefixed names belong to the runtime
-func isReservedName(name string) bool {
-	return swiftReservedNames[name] || strings.HasPrefix(name, "GotsRPC")
+// swiftRuntimeNames are the names the runtime uses unqualified. The runtime is not namespaced,
+// so only top level declarations can shadow them.
+var swiftRuntimeNames = map[string]bool{
+	"Error": true, "CustomStringConvertible": true, "URL": true, "URLError": true, "URLRequest": true,
+	"URLResponse": true, "HTTPURLResponse": true, "URLSession": true, "JSONEncoder": true, "JSONDecoder": true,
+	"UTF8": true, "URLSessionTransport": true,
+}
+
+// isReservedName tells if a declaration of name would shadow a name the generated code depends on.
+// All GotsRPC prefixed names belong to the runtime, which the clients reference from within namespaces.
+func isReservedName(name, namespace string) bool {
+	return swiftTypeCodeNames[name] || strings.HasPrefix(name, "GotsRPC") || (namespace == "" && swiftRuntimeNames[name])
 }
 
 // swiftDecl is a generated swift declaration
@@ -105,7 +107,7 @@ func (g *swiftGen) checkNames() error {
 			sort.Strings(origins)
 
 			switch {
-			case isReservedName(name):
+			case isReservedName(name, namespace):
 				problems = append(problems, "swift name "+qualified+" is reserved by swift or the goswiftrpc runtime: "+strings.Join(origins, ", "))
 			case len(origins) > 1:
 				problems = append(problems, "swift name collision: "+qualified+"\n  "+strings.Join(origins, "\n  ")+

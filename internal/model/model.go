@@ -224,6 +224,12 @@ func (m *Model) walk(t types.Type) error {
 		}
 
 		m.Types[fullName] = t
+
+		// the underlying type and constants of custom marshaled types are not visible on the wire
+		if MarshalingOf(t) != MarshalDefault {
+			return nil
+		}
+
 		m.collectConsts(t)
 
 		return m.walk(t.Underlying())
@@ -256,6 +262,41 @@ func (m *Model) walk(t types.Type) error {
 		return nil
 	default:
 		return fmt.Errorf("unsupported type %s", t)
+	}
+}
+
+// Marshaling tells how a named type is encoded on the wire
+type Marshaling int
+
+const (
+	// MarshalDefault types are encoded by their underlying type
+	MarshalDefault Marshaling = iota
+	// MarshalText types are encoded as json strings, like bson.ObjectID or uuid.UUID
+	MarshalText
+	// MarshalJSON types write json of an unknown shape
+	MarshalJSON
+)
+
+// MarshalingOf returns how gotsrpc encodes a named type. Like the ugorji codec used by gotsrpc it only uses
+// marshaler methods if the matching unmarshaler exists. Types with json and text marshalers are assumed to
+// encode to strings as well.
+func MarshalingOf(named *types.Named) Marshaling {
+	if named.Obj().Pkg() == nil {
+		return MarshalDefault
+	}
+
+	methods := types.NewMethodSet(types.NewPointer(named))
+	has := func(name string) bool {
+		return methods.Lookup(named.Obj().Pkg(), name) != nil
+	}
+
+	switch {
+	case has("MarshalText") && has("UnmarshalText"):
+		return MarshalText
+	case has("MarshalJSON") && has("UnmarshalJSON"):
+		return MarshalJSON
+	default:
+		return MarshalDefault
 	}
 }
 

@@ -92,7 +92,7 @@ let tree: Forest.Tree? = try await trees.getTree(treeType: .sassafras)
 Namespaces are opt-in. Before writing any files, the generator checks every Swift name and fails with an explanation if:
 - two declarations get the same Swift name, for example two flat `Leaf` types or two flat `ServiceClient`s
 - a namespace is shared by several Go packages, or has the same name as a type
-- a type has a name the generated code needs, such as `Date`, `Data`, `String`, `Result`, `URLSessionTransport` or anything starting with `GotsRPC`
+- a type has a name the generated code uses, such as `Date`, `Data`, `String`, `Encoder` or anything starting with `GotsRPC`. At the top level, names used by the runtime, such as `Error`, `URL` or `URLSessionTransport`, are reserved as well. Other names are fine inside a namespace, for example `Search.Result`
 - a type without namespace is referenced from inside a namespace that has a type of the same name, where Swift would pick the namespaced one
 
 The fix is almost always to give one of the packages a namespace. If you prefer shorter names in your app, add aliases such as `typealias ForestClient = Forest.ServiceClient`.
@@ -136,6 +136,10 @@ let (tree, err) = try await client.getTree(rootID: .rootLeafID)
 | named scalar with constants (`type Role int` + iota) | `RawRepresentable` struct with `static let` values |
 | named scalar without constants                       | `typealias`                                        |
 | named slice / map                                    | `typealias`                                        |
+| `MarshalText` + `UnmarshalText` (e.g. `bson.ObjectID`, `uuid.UUID`) | `typealias … = String`              |
+| `MarshalJSON` + `UnmarshalJSON` only                 | `typealias … = GotsRPCJSONValue`                   |
+
+Custom marshalers are only used when the matching unmarshaler exists too, as in gotsrpc's JSON encoder. A type with both a JSON and a text marshaler is assumed to encode to a string. The constants of a custom marshaled type are not generated, because their encoded values are not known statically.
 
 How struct fields are generated:
 - `json` tags set the property names (`CodingKeys`). `json:"-"` and unexported fields are skipped.
