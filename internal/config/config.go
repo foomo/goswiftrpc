@@ -64,7 +64,13 @@ func (c *Config) resolve(dir string) error {
 		return filepath.Join(dir, p)
 	}
 
+	module := c.Module
 	c.Module = abs(c.Module)
+
+	// go/packages reports a missing working directory as a missing go binary, so check it here
+	if info, err := os.Stat(c.Module); err != nil || !info.IsDir() {
+		return fmt.Errorf("module %q: directory %s does not exist, set module to the directory containing your go.mod (relative to the config file)", module, c.Module)
+	}
 
 	if c.Runtime == "" {
 		return errors.New("missing runtime out")
